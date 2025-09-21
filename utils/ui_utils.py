@@ -36,7 +36,7 @@ class ImageRect:
         return [self.pos[0], self.pos[1], self.width, self.height]
 
 class ClickableArea:
-    def __init__(self,x,y,w,h,rectangles,mapping,ids, func=None, **args):
+    def __init__(self,x,y,w,h,rectangles,mapping,ids, colors, func=None, **args):
         self.x = x
         self.y = y
         self.w = w
@@ -44,6 +44,7 @@ class ClickableArea:
         self.rectangles = [pygame.Rect(x-w/2,y-h/2,w,h) for x,y,w,h in rectangles]
         self.mapping = mapping
         self.ids = ids
+        self.colors = colors
         self.func = func
         self.args = args
 
@@ -59,7 +60,7 @@ class ClickableArea:
         
         # Draw rectangles and text onto the virtual surface
         for i, rect in enumerate(self.rectangles):
-            pygame.draw.rect(self.virtual_surface, (0, 255, 0), rect, 2)  # Draw rectangle
+            pygame.draw.rect(self.virtual_surface, self.colors[self.ids[i]], rect, 5)  # Draw rectangle
             # Create title text
             title_text = self.font.render(str(self.mapping[self.ids[i]]), True, (255, 255, 255))
             

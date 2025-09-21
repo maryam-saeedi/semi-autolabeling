@@ -7,7 +7,7 @@ def track(video_name, weight_name, conf_thresh, iou_thresh, mapping, output_stre
     # Store the track history
     track_history = defaultdict(lambda: [])
 
-    cnt = 0
+    cnt = -1
     while cap.isOpened() and running.value:
         success, frame = cap.read()
         if not success:
@@ -59,8 +59,6 @@ def track(video_name, weight_name, conf_thresh, iou_thresh, mapping, output_stre
                     mapping[id] = 0
 
         if cnt%100==0:
-            print(boxes)
-            print(frame.shape)
             output_stream.put((frame, boxes, track_ids))
 
     output_stream.put(None)
@@ -108,11 +106,11 @@ class App:
         #### ---- monkey names
         self.monkeys_name_title_lbl = Label(offset_x, 6*h/10, text="Monkey's Names")
         self.monkey_name_lbl = Label(offset_x, 6*h/10+offset_y, text="Monkey Name:")
-        self.monkey_name_inp = InputBox(offset_x, 6*h/10+2*offset_y, w/6-offset_x, y)
-        self.add_monkey_name_btn = Button("Add Name", w/6-offset_x, y, (offset_x,6*h/10+3*offset_y+y), func=self.__add_monkey)
+        self.monkey_name_inp = InputBox(offset_x, 6*h/10+2*offset_y, w/6-offset_x, y, func=self.__enable_btn)
+        self.add_monkey_name_btn = Button("Add Name", w/6-offset_x, y, (offset_x,6*h/10+3*offset_y+y), clickable=False, func=self.__add_monkey)
         self.add_monkey_name_hint_lbl = Label(offset_x,6*h/10+3*offset_y+y+y, color=(250,50,100))
         #### --------
-        self.process_btn = Button("Process", w/6-offset_x, y, (w-w/6-2*offset_x, h-y-offset_y), clickable=False, func=self.__process)
+        self.process_btn = Button("Process", w/6-offset_x, y, (w-w/6-2*offset_x, h-y-offset_y), clickable=False, func=self.__wait_for_process, process=self.__process)
 
         self.monkey_list_lst = DropDown(offset_x, offset_y, w/6-offset_x, y, options=["No Label"], func=self.__select_monkey)
         self.confirm_btn = Button("Confirm", w/12-offset_x, y, (w-w/12-2*offset_x, h-y-offset_y), func=self.__confirm)
@@ -122,13 +120,43 @@ class App:
     def __init(self):
         self.cuda = torch.cuda.is_available()
 
+        ### waiting page ------
+        self.wait = False
+        self.convert = False
+        ## --------------------
+
         self.input_video = ''
         self.output_dir = ''
         self.box_weight = None
         self.monkey_list = []
 
+        self.done = False
+
     def __quit(self):
-        self.tracking_running.value = False
+        try:
+            self.tracking_running.value = False
+            for i in range(len(self.tracking_on_video_process)):
+                self.tracking_on_video_process[i].join()
+        except:
+            pass
+
+    def __wait_for_process(self, process=None):
+        if process is not None:
+            self.waiting_process = process
+
+        if not self.wait:
+            self.wait = True
+            return
+        
+        if not self.convert:
+            self.convert = True
+            return
+        
+        # process()
+        self.waiting_process()
+        self.wait = False
+        self.convert = False
+  
 
     def __prompt_file(self, mode="file", filetype=("all files", "*.*")):
         """Create a Tk file dialog and cleanup when finished"""
@@ -178,6 +206,9 @@ class App:
             self.box_weight = None
             self.load_box_model_lbl.text = ''
 
+    def __enable_btn(self):
+        self.add_monkey_name_btn.clickable = len(self.monkey_name_inp.text)
+
     def __add_monkey(self):
         name = self.monkey_name_inp.text
         if name in self.monkey_list:
@@ -186,6 +217,7 @@ class App:
             self.monkey_list.append(name)
             self.add_monkey_name_hint_lbl.text = ""
             self.monkey_name_inp.text = ""
+            self.add_monkey_name_btn.clickable = False
 
     def __process(self):
         self.step += 1
@@ -194,17 +226,19 @@ class App:
         self.tracked_videos = []
         self.frame_grid = []
         self.cover_grid = []
+        self.color_coded = [(200,200,200)]+[tuple((int(np.random.randint(0,255)), int(np.random.randint(0,255)), int(np.random.randint(0,255)))) for _ in range(len(self.monkey_list))]
         self.mapping_ids = [dict()]*len(self.input_video)
         self.tracking_running = Value('b', True)
+        self.tracking_on_video_process = []
         for i,video in enumerate(self.input_video):
             self.tracked_videos.append(Queue())
-            tracking_on_video_process = threading.Thread(target = track, args=(video, self.box_weight, float(self.conf_inp.text), float(self.iou_inp.text), self.mapping_ids[i], self.tracked_videos[-1], self.tracking_running))
-            tracking_on_video_process.start()
-
+            self.tracking_on_video_process.append(threading.Thread(target = track, args=(video, self.box_weight, float(self.conf_inp.text), float(self.iou_inp.text), self.mapping_ids[i], self.tracked_videos[-1], self.tracking_running)))
+            self.tracking_on_video_process[-1].start()
         for i in range(len(self.tracked_videos)):
+                print(i)
                 frame_info = self.tracked_videos[i].get()
-                print(frame_info[0].shape)
-                self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], func=self.__click_on_monkey_box, area_num=i))
+                print('get')
+                self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}, func=self.__click_on_monkey_box, area_num=i))
                 self.frame_grid.append(frame_info)
 
         # os.makedirs(os.path.join(self.output_dir,'dataset'),exist_ok=True)
@@ -221,6 +255,7 @@ class App:
         self.mapping_ids[self.area_of_interest][self.id_of_interest] = selected_option
         for i in range(len(self.tracked_videos)):
             self.cover_grid[i].mapping = {key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}
+            self.cover_grid[i].colors = {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}
             self.cover_grid[i].update()
 
     def __confirm(self):
@@ -239,7 +274,10 @@ class App:
             self.cover_grid = []
             for i in range(len(self.tracked_videos)):
                 frame_info = self.tracked_videos[i].get()
-                self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], func=self.__click_on_monkey_box, area_num=i))
+                if frame_info is None:
+                    self.done = True
+                    break
+                self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}, func=self.__click_on_monkey_box, area_num=i))
                 self.frame_grid.append(frame_info)
 
 
@@ -304,20 +342,42 @@ class App:
                     self.process_btn.draw(screen)
 
                 elif self.step == 1:   # process page
-                    self.monkey_list_lst.update(self.events)
-                    self.monkey_list_lst.draw(screen)
-                    self.confirm_btn.draw(screen)
+                    if self.done:
+                        font = pygame.font.Font(None, 108)
+                        text = font.render("Process is done!", True, (50,50,100))
+                        r = text.get_rect()
+                        screen.blit(text, ((self.w-r.width)//2, (self.h-r.height)//2-50))
+                                
+                    else:
+                        self.confirm_btn.clickable = np.array([self.tracked_videos[i].qsize()>0 for i in range(len(self.tracked_videos))]).all()
+                            
+                        self.monkey_list_lst.update(self.events)
+                        self.monkey_list_lst.draw(screen)
+                        self.confirm_btn.draw(screen)
 
-                    n = np.ceil(np.sqrt(len(self.tracked_videos)))
-                    h = .9*self.h/n - (n-1)*.01*self.h
-                    w = (5/4)*h
-                    x = (self.w-(n*w)-((n-1)*.01*self.h))/2     
+                        n = np.ceil(np.sqrt(len(self.tracked_videos)))
+                        h = .9*self.h/n - (n-1)*.01*self.h
+                        w = (5/4)*h
+                        x = (self.w-(n*w)-((n-1)*.01*self.h))/2     
 
-                    if len(self.frame_grid) == len(self.tracked_videos):
-                        for i in range(len(self.tracked_videos)):
-                            frame = cv2.resize(self.frame_grid[i][0], (int(w),int(h)))
-                            screen.blit(pygame.image.frombuffer(frame.tobytes(), (frame.shape[1],frame.shape[0]), "RGB"), (x+(i%n)*(w+.01*self.h)+self.w//40,.05*self.h+(i//n)*(h+.01*self.h)))
-                            self.cover_grid[i].draw(screen, x+(i%n)*(w+.01*self.h)+self.w//40,.05*self.h+(i//n)*(h+.01*self.h),frame.shape[1],frame.shape[0])
+                        if len(self.frame_grid) == len(self.tracked_videos):
+                            for i in range(len(self.tracked_videos)):
+                                frame = cv2.resize(self.frame_grid[i][0], (int(w),int(h)))
+                                screen.blit(pygame.image.frombuffer(frame.tobytes(), (frame.shape[1],frame.shape[0]), "RGB"), (x+(i%n)*(w+.01*self.h)+self.w//40,.05*self.h+(i//n)*(h+.01*self.h)))
+                                self.cover_grid[i].draw(screen, x+(i%n)*(w+.01*self.h)+self.w//40,.05*self.h+(i//n)*(h+.01*self.h),frame.shape[1],frame.shape[0])
+
+
+                ### transparent waiting page
+                if self.wait:
+                    s = pygame.Surface((self.w,self.h))  # the size of your rect
+                    s.set_alpha(220)                # alpha level
+                    s.fill((50,50,50))           # this fills the entire surface
+                    screen.blit(s, (0,0)) 
+                    font = pygame.font.Font(None, 92)
+                    text = font.render("Please Wait ...", True, (255,255,255))
+                    r = text.get_rect()
+                    screen.blit(text, ((self.w-r.width)//2, (self.h-r.height)//2))
+                    self.__wait_for_process()
 
 
             except Exception as e:
