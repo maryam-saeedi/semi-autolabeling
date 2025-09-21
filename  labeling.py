@@ -114,6 +114,7 @@ class App:
 
         self.monkey_list_lst = DropDown(offset_x, offset_y, w/6-offset_x, y, options=["No Label"], func=self.__select_monkey)
         self.confirm_btn = Button("Confirm", w/12-offset_x, y, (w-w/12-2*offset_x, h-y-offset_y), func=self.__confirm)
+        self.finish_btn = Button("Terminate", w/12-offset_x, y, (offset_x, h-y-offset_y), func=self.__finish)
 
         self.__init()
 
@@ -235,9 +236,7 @@ class App:
             self.tracking_on_video_process.append(threading.Thread(target = track, args=(video, self.box_weight, float(self.conf_inp.text), float(self.iou_inp.text), self.mapping_ids[i], self.tracked_videos[-1], self.tracking_running)))
             self.tracking_on_video_process[-1].start()
         for i in range(len(self.tracked_videos)):
-                print(i)
                 frame_info = self.tracked_videos[i].get()
-                print('get')
                 self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}, func=self.__click_on_monkey_box, area_num=i))
                 self.frame_grid.append(frame_info)
 
@@ -280,7 +279,9 @@ class App:
                 self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}, func=self.__click_on_monkey_box, area_num=i))
                 self.frame_grid.append(frame_info)
 
-
+    def __finish(self):
+        self.__quit()
+        self.done = True
 
     def run(self):
         done = False
@@ -354,6 +355,7 @@ class App:
                         self.monkey_list_lst.update(self.events)
                         self.monkey_list_lst.draw(screen)
                         self.confirm_btn.draw(screen)
+                        self.finish_btn.draw(screen)
 
                         n = np.ceil(np.sqrt(len(self.tracked_videos)))
                         h = .9*self.h/n - (n-1)*.01*self.h
