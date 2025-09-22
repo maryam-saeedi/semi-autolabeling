@@ -112,7 +112,7 @@ class App:
         #### --------
         self.process_btn = Button("Process", w/6-offset_x, y, (w-w/6-2*offset_x, h-y-offset_y), clickable=False, func=self.__wait_for_process, process=self.__process)
 
-        self.monkey_list_lst = DropDown(offset_x, offset_y, w/6-offset_x, y, options=["No Label"], func=self.__select_monkey)
+        self.monkey_list_lst = DropDown(offset_x, offset_y, w/6-offset_x, y, options=["No Label"], enable=False, func=self.__select_monkey)
         self.confirm_btn = Button("Confirm", w/12-offset_x, y, (w-w/12-2*offset_x, h-y-offset_y), func=self.__confirm)
         self.finish_btn = Button("Terminate", w/12-offset_x, y, (offset_x, h-y-offset_y), func=self.__finish)
 
@@ -223,6 +223,20 @@ class App:
     def __process(self):
         self.step += 1
 
+        ## dump tracking parameters -------------
+        params = {
+            "tracker_type": 'bytetrack',
+            "track_high_thresh": self.track_high_thresh_inp.text,
+            "track_low_thresh": self.track_low_thresh_inp.text,
+            "new_track_thresh": self.track_new_thresh_inp.text,
+            "track_buffer": self.track_buffer_inp.text,
+            "match_thresh": self.track_match_thresh_inp.text,
+            "fuse_score": True
+        }
+        with open("parameters.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(params, f, sort_keys=False)
+        ## --------------------------------------
+
         self.monkey_list_lst.options += self.monkey_list
         self.tracked_videos = []
         self.frame_grid = []
@@ -246,11 +260,13 @@ class App:
 
 
     def __click_on_monkey_box(self, item, area_num):
+        self.monkey_list_lst.enable = True
         self.monkey_list_lst.draw_menu = True
         self.area_of_interest = area_num
         self.id_of_interest = item
 
     def __select_monkey(self, selected_option):
+        self.monkey_list_lst.enable = False
         self.mapping_ids[self.area_of_interest][self.id_of_interest] = selected_option
         for i in range(len(self.tracked_videos)):
             self.cover_grid[i].mapping = {key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}
@@ -266,7 +282,7 @@ class App:
                 frame = frame_info[0]
                 for rect, id in zip(frame_info[1], frame_info[2]):
                     if self.mapping_ids[i][id]!=0:
-                        cropped_box = frame[int(rect[1]):int(rect[1]+rect[3]),int(rect[0]):int(rect[0]+rect[2])]
+                        cropped_box = frame[int(rect[1]-rect[3]/2):int(rect[1]+rect[3]/2),int(rect[0]-rect[2]/2):int(rect[0]+rect[2]/2)]
                         cv2.imwrite(os.path.join(self.output_dir, 'dataset', self.monkey_list_lst.options[self.mapping_ids[i][id]],datetime.now().strftime("%Y%m%d%H%M%S")+'.png'), cropped_box)
 
             self.frame_grid = []
@@ -304,7 +320,9 @@ class App:
                 screen.fill((255, 255, 255))
 
                 if self.step == 0:  # param page
-                    self.process_btn.clickable = len(self.input_video)>0 and (self.box_weight is not None) and self.output_dir!='' and len(self.monkey_list)>0
+                    self.process_btn.clickable = len(self.input_video)>0 and (self.box_weight is not None) and self.output_dir!='' and len(self.monkey_list)>0 \
+                        and self.track_high_thresh_inp.text!='' and self.track_low_thresh_inp.text!='' and self.track_buffer_inp.text!='' and self.track_match_thresh_inp.text!='' and self.track_new_thresh_inp.text!='' \
+                        and self.iou_inp.text!='' and self.conf_inp.text!=''
                     self.browse_video_btn.draw(screen)
                     self.video_file_lbl.draw(screen)
                     self.video_files_count_lbl.draw(screen)
@@ -413,6 +431,7 @@ if __name__ == "__main__":
     import json
     import pandas as pd
     import threading
+    import yaml
 
     pygame.init()
     pygame.display.set_caption('Semi Auto Labeling')
