@@ -59,7 +59,7 @@ def track(video_name, weight_name, conf_thresh, iou_thresh, mapping, output_stre
                     mapping[id] = 0
 
         if cnt%100==0:
-            output_stream.put((frame, boxes, track_ids))
+            output_stream.put((cv2.cvtColor(frame,cv2.COLOR_BGR2RGB), boxes, track_ids))
 
     output_stream.put(None)
 
@@ -78,41 +78,42 @@ class App:
         y = h//20
         
         ## get parameter page
-        self.browse_video_btn = Button("Browse Video", w/3-2*(offset_x), y, (2*offset_x, offset_y), func=self.__browse_videos)
-        self.video_file_lbl = Label(2*offset_x, offset_y+y, w=w/3-2*offset_x)
-        self.video_files_count_lbl = Label(2*offset_x+w/3-2*(offset_x), offset_y, w=w/3-2*offset_x)
-        self.browse_output_btn = Button("Browse Output Folder", w/3-2*(offset_x), y, (w-w/3, offset_y), func=self.__browse_output)
-        self.output_dir_lbl = Label(w-w/3, offset_y+y, w=w/3-2*offset_x)
+        self.prediction_device_lbl = Label(2*offset_x, offset_y, color=(20,50,200))
+        self.browse_video_btn = Button("Browse Video Folder", w/3-2*(offset_x), y, (2*offset_x, offset_y+y), func=self.__browse_videos)
+        self.video_file_lbl = Label(2*offset_x, offset_y+2*y, w=w/3-2*offset_x)
+        self.video_files_count_lbl = Label(2*offset_x+w/3-2*(offset_x), offset_y+y, w=w/3-2*offset_x)
+        self.browse_output_btn = Button("Browse Output Folder", w/3-2*(offset_x), y, (w-w/3, offset_y+y), func=self.__browse_output)
+        self.output_dir_lbl = Label(w-w/3, offset_y+2*y, w=w/3-2*offset_x)
         #### ---- box parameteres
-        self.box_param_title_lbl = Label(offset_x, 2*h/10, text="Box Prediction Parameters")
-        self.load_box_model_btn = Button("Load Box Model", w/6-offset_x, y, (offset_x, 2*h/10+2*offset_y), func=self.__load_box_model)
-        self.load_box_model_lbl = Label(offset_x, 2*h/10+2*offset_y+y, w=w/5)
-        self.iou_inp = InputBox(w/5+offset_x, 2*h/10+2*offset_y, w/6-offset_x, y, text='0.75')
-        self.iou_lbl = Label(w/5+offset_x, 2*h/10+offset_y, text='IoU Threshold:')
-        self.conf_inp = InputBox(2*w/5+offset_x, 2*h/10+2*offset_x, w/6-offset_x, y, text='0.2')
-        self.conf_lbl = Label(2*w/5+offset_x, 2*h/10+offset_y, text='Box Confidence:')
+        self.box_param_title_lbl = Label(offset_x, 2*h/10+y, text="Box Prediction Parameters")
+        self.load_box_model_btn = Button("Load Box Model", w/6-offset_x, y, (offset_x, 2*h/10+2*offset_y+y), func=self.__load_box_model)
+        self.load_box_model_lbl = Label(offset_x, 2*h/10+2*offset_y+2*y, w=w/5)
+        self.iou_inp = InputBox(w/5+offset_x, 2*h/10+2*offset_y+y, w/6-offset_x, y, text='0.75')
+        self.iou_lbl = Label(w/5+offset_x, 2*h/10+offset_y+y, text='IoU Threshold:')
+        self.conf_inp = InputBox(2*w/5+offset_x, 2*h/10+2*offset_x+y, w/6-offset_x, y, text='0.2')
+        self.conf_lbl = Label(2*w/5+offset_x, 2*h/10+offset_y+y, text='Box Confidence:')
         #### ---- tracking parameters
-        self.track_param_title_lbl = Label(offset_x, 4*h/10, text="Tracking Parameteres")
-        self.track_high_thresh_inp = InputBox(offset_x, 4*h/10+2*offset_y,  w/6-offset_x, y, text='0.5')
-        self.track_high_thresh_lbl = Label(offset_x, 4*h/10+offset_y, text='Track High Threshold:')
-        self.track_low_thresh_inp = InputBox(w/5+offset_x, 4*h/10+2*offset_y,  w/6-offset_x, y, text='0.1')
-        self.track_low_thresh_lbl = Label(w/5+offset_x, 4*h/10+offset_y, text='Track Low Threshold:')
-        self.track_new_thresh_inp = InputBox(2*w/5+offset_x, 4*h/10+2*offset_y,  w/6-offset_x, y, text='0.5')
-        self.track_new_thresh_lbl = Label(2*w/5+offset_x, 4*h/10+offset_y, text='New Track Threshold:')
-        self.track_buffer_inp = InputBox(3*w/5+offset_x, 4*h/10+2*offset_y,  w/6-offset_x, y, text='300')
-        self.track_buffer_lbl = Label(3*w/5+offset_x, 4*h/10+offset_y, text='Track Buffer Size:')
-        self.track_match_thresh_inp = InputBox(4*w/5+offset_x, 4*h/10+2*offset_y,  w/6-offset_x, y, text='0.8')
-        self.track_match_thresh_lbl = Label(4*w/5+offset_x, 4*h/10+offset_y, text='Matching Threshold:')
+        self.track_param_title_lbl = Label(offset_x, 4*h/10+y, text="Tracking Parameteres")
+        self.track_high_thresh_inp = InputBox(offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.5')
+        self.track_high_thresh_lbl = Label(offset_x, 4*h/10+offset_y+y, text='Track High Threshold:')
+        self.track_low_thresh_inp = InputBox(w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.1')
+        self.track_low_thresh_lbl = Label(w/5+offset_x, 4*h/10+offset_y+y, text='Track Low Threshold:')
+        self.track_new_thresh_inp = InputBox(2*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.5')
+        self.track_new_thresh_lbl = Label(2*w/5+offset_x, 4*h/10+offset_y+y, text='New Track Threshold:')
+        self.track_buffer_inp = InputBox(3*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='300')
+        self.track_buffer_lbl = Label(3*w/5+offset_x, 4*h/10+offset_y+y, text='Track Buffer Size:')
+        self.track_match_thresh_inp = InputBox(4*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.8')
+        self.track_match_thresh_lbl = Label(4*w/5+offset_x, 4*h/10+offset_y+y, text='Matching Threshold:')
         #### ---- monkey names
-        self.monkeys_name_title_lbl = Label(offset_x, 6*h/10, text="Monkey's Names")
-        self.monkey_name_lbl = Label(offset_x, 6*h/10+offset_y, text="Monkey Name:")
-        self.monkey_name_inp = InputBox(offset_x, 6*h/10+2*offset_y, w/6-offset_x, y, func=self.__enable_btn)
-        self.add_monkey_name_btn = Button("Add Name", w/6-offset_x, y, (offset_x,6*h/10+3*offset_y+y), clickable=False, func=self.__add_monkey)
-        self.add_monkey_name_hint_lbl = Label(offset_x,6*h/10+3*offset_y+y+y, color=(250,50,100))
+        self.monkeys_name_title_lbl = Label(offset_x, 6*h/10+y, text="Monkey's Names")
+        self.monkey_name_lbl = Label(offset_x, 6*h/10+offset_y+y, text="Monkey Name:")
+        self.monkey_name_inp = InputBox(offset_x, 6*h/10+2*offset_y+y, w/6-offset_x, y, func=self.__enable_btn)
+        self.add_monkey_name_btn = Button("Add Name", w/6-offset_x, y, (offset_x,6*h/10+3*offset_y+2*y), clickable=False, func=self.__add_monkey)
+        self.add_monkey_name_hint_lbl = Label(offset_x,6*h/10+3*offset_y+3*y, color=(250,50,100))
         #### --------
         self.process_btn = Button("Process", w/6-offset_x, y, (w-w/6-2*offset_x, h-y-offset_y), clickable=False, func=self.__wait_for_process, process=self.__process)
 
-        self.monkey_list_lst = DropDown(offset_x, offset_y, w/6-offset_x, y, options=["No Label"], enable=False, func=self.__select_monkey)
+        self.monkey_list_lst = DropDown(offset_x, offset_y, w/6-offset_x, y, options=["No Label"], enable=False, scrollable=True, height=8*h/10, func=self.__select_monkey)
         self.confirm_btn = Button("Confirm", w/12-offset_x, y, (w-w/12-2*offset_x, h-y-offset_y), func=self.__confirm)
         self.finish_btn = Button("Terminate", w/12-offset_x, y, (offset_x, h-y-offset_y), func=self.__finish)
 
@@ -120,6 +121,12 @@ class App:
 
     def __init(self):
         self.cuda = torch.cuda.is_available()
+        if self.cuda:
+            self.prediction_device_lbl.text = "CUDA is available. Prediction will be done on GPU."
+            self.prediction_device_lbl.color = (50,200,10)
+        else:
+            self.prediction_device_lbl.text = "CUDA isn't available! Prediction will be done on CPU."
+            self.prediction_device_lbl.color = (200,10,50)
 
         ### waiting page ------
         self.wait = False
@@ -137,6 +144,8 @@ class App:
         try:
             self.tracking_running.value = False
             for i in range(len(self.tracking_on_video_process)):
+                while self.tracked_videos[i].qsize()>0:
+                    _ = self.tracked_videos[i].get()
                 self.tracking_on_video_process[i].join()
         except:
             pass
@@ -200,7 +209,7 @@ class App:
 
     def __load_box_model(self):
         try:
-            file = self.__prompt_file(filetype=("model weights", "*.engine *.pt") if self.cuda else ("PyTorch models", "*.pt"))
+            file = self.__prompt_file(filetype=("PyTorch models", "*.pt"))
             self.box_weight = file
             self.load_box_model_lbl.text = file
         except:
@@ -226,22 +235,22 @@ class App:
         ## dump tracking parameters -------------
         params = {
             "tracker_type": 'bytetrack',
-            "track_high_thresh": self.track_high_thresh_inp.text,
-            "track_low_thresh": self.track_low_thresh_inp.text,
-            "new_track_thresh": self.track_new_thresh_inp.text,
-            "track_buffer": self.track_buffer_inp.text,
-            "match_thresh": self.track_match_thresh_inp.text,
+            "track_high_thresh": float(self.track_high_thresh_inp.text),
+            "track_low_thresh": float(self.track_low_thresh_inp.text),
+            "new_track_thresh": float(self.track_new_thresh_inp.text),
+            "track_buffer": int(self.track_buffer_inp.text),
+            "match_thresh": float(self.track_match_thresh_inp.text),
             "fuse_score": True
         }
         with open("parameters.yaml", "w", encoding="utf-8") as f:
             yaml.dump(params, f, sort_keys=False)
         ## --------------------------------------
 
-        self.monkey_list_lst.options += self.monkey_list
+        self.monkey_list_lst.update_options(['No Lable']+self.monkey_list)
         self.tracked_videos = []
         self.frame_grid = []
         self.cover_grid = []
-        self.color_coded = [(200,200,200)]+[tuple((int(np.random.randint(0,255)), int(np.random.randint(0,255)), int(np.random.randint(0,255)))) for _ in range(len(self.monkey_list))]
+        self.color_coded = generate_unique_colors(len(self.monkey_list)+1)
         self.mapping_ids = [dict()]*len(self.input_video)
         self.tracking_running = Value('b', True)
         self.tracking_on_video_process = []
@@ -255,8 +264,9 @@ class App:
                 self.frame_grid.append(frame_info)
 
         # os.makedirs(os.path.join(self.output_dir,'dataset'),exist_ok=True)
+        self.output_dir = os.path.join(self.output_dir,'dataset_'+datetime.now().strftime("%Y%m%d%H%M%S"))
         for monkey in self.monkey_list:
-            os.makedirs(os.path.join(self.output_dir,'dataset',monkey),exist_ok=True)
+            os.makedirs(os.path.join(self.output_dir,monkey),exist_ok=True)
 
 
     def __click_on_monkey_box(self, item, area_num):
@@ -283,7 +293,8 @@ class App:
                 for rect, id in zip(frame_info[1], frame_info[2]):
                     if self.mapping_ids[i][id]!=0:
                         cropped_box = frame[int(rect[1]-rect[3]/2):int(rect[1]+rect[3]/2),int(rect[0]-rect[2]/2):int(rect[0]+rect[2]/2)]
-                        cv2.imwrite(os.path.join(self.output_dir, 'dataset', self.monkey_list_lst.options[self.mapping_ids[i][id]],datetime.now().strftime("%Y%m%d%H%M%S")+'.png'), cropped_box)
+                        cropped_box = cv2.cvtColor(cropped_box, cv2.COLOR_RGB2BGR)
+                        cv2.imwrite(os.path.join(self.output_dir, self.monkey_list_lst.options[self.mapping_ids[i][id]],datetime.now().strftime("%Y%m%d%H%M%S")+'.png'), cropped_box)
 
             self.frame_grid = []
             self.cover_grid = []
@@ -320,6 +331,7 @@ class App:
                 screen.fill((255, 255, 255))
 
                 if self.step == 0:  # param page
+                    self.prediction_device_lbl.draw(screen)
                     self.process_btn.clickable = len(self.input_video)>0 and (self.box_weight is not None) and self.output_dir!='' and len(self.monkey_list)>0 \
                         and self.track_high_thresh_inp.text!='' and self.track_low_thresh_inp.text!='' and self.track_buffer_inp.text!='' and self.track_match_thresh_inp.text!='' and self.track_new_thresh_inp.text!='' \
                         and self.iou_inp.text!='' and self.conf_inp.text!=''
@@ -355,7 +367,7 @@ class App:
                     self.add_monkey_name_btn.draw(screen)
                     self.add_monkey_name_hint_lbl.draw(screen)
                     for i, name in enumerate(self.monkey_list):
-                        lbl = Label(self.w/5+self.w/50+(i//10)*self.w/5, 6*self.h/10+2*self.h/25+(i%5)*self.h/30, w=self.w/20, text=name)
+                        lbl = Label(self.w/5+self.w/50+(i//5)*self.w/10, 6*self.h/10+2*self.h/25+(i%5)*self.h/30, w=self.w/20, text=name)
                         lbl.draw(screen)
                     #### ------------
                     self.process_btn.draw(screen)
@@ -432,6 +444,7 @@ if __name__ == "__main__":
     import pandas as pd
     import threading
     import yaml
+    from utils.helpers import *
 
     pygame.init()
     pygame.display.set_caption('Semi Auto Labeling')

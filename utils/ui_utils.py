@@ -466,6 +466,10 @@ class DropDown:
         self.SCREEN_HEIGHT = y+h+height
         self.rects = [pygame.Rect(self.rect.x, self.rect.y + i * (self.rect.height), self.rect.width, self.rect.height) for i in range(len(self.options))]
 
+    def update_options(self, options):
+        self.options = options
+        self.rects = [pygame.Rect(self.rect.x, self.rect.y + i * (self.rect.height), self.rect.width, self.rect.height) for i in range(len(self.options))]
+
     def draw(self, surf):
         pygame.draw.rect(surf, '#50938a' if self.enable else '#798483', self.rect, 0, border_radius=6)
         msg = self.font.render(self.options[self.selected_option], 1, '#ffffff')
