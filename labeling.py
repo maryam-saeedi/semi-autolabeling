@@ -59,7 +59,7 @@ def track(video_name, weight_name, conf_thresh, iou_thresh, mapping, output_stre
                     mapping[id] = 0
 
         if cnt%100==0:
-            output_stream.put((cv2.cvtColor(frame,cv2.COLOR_BGR2RGB), boxes, track_ids))
+            output_stream.put((cv2.cvtColor(frame,cv2.COLOR_BGR2RGB), boxes, track_ids, cnt))
 
     output_stream.put(None)
 
@@ -80,6 +80,7 @@ class App:
         ## get parameter page
         self.prediction_device_lbl = Label(2*offset_x, offset_y, color=(20,50,200))
         self.browse_video_btn = Button("Browse Video Folder", w/3-2*(offset_x), y, (2*offset_x, offset_y+y), func=self.__browse_videos)
+        self.browse_video_hint_tk = Toolkit(screen, 2*offset_x+w/3-2*(offset_x)+10, offset_y+y, text="Select a folder containing synchronized videos of a recording session.")
         self.video_file_lbl = Label(2*offset_x, offset_y+2*y, w=w/3-2*offset_x)
         self.video_files_count_lbl = Label(2*offset_x+w/3-2*(offset_x), offset_y+y, w=w/3-2*offset_x)
         self.browse_output_btn = Button("Browse Output Folder", w/3-2*(offset_x), y, (w-w/3, offset_y+y), func=self.__browse_output)
@@ -90,20 +91,27 @@ class App:
         self.load_box_model_lbl = Label(offset_x, 2*h/10+2*offset_y+2*y, w=w/5)
         self.iou_inp = InputBox(w/5+offset_x, 2*h/10+2*offset_y+y, w/6-offset_x, y, text='0.75')
         self.iou_lbl = Label(w/5+offset_x, 2*h/10+offset_y+y, text='IoU Threshold:')
+        self.iou_hint_tk = Toolkit(screen, self.iou_lbl.x+self.iou_lbl.get_width()+10, 2*h/10+offset_y+y, text="Threshold used during NMS to decide whether to keep overlapping boxes. Higher value retains more overlapping boxes (useful when objects are close together). Lower value removes overlapping boxes to avoid duplicate detections.")
         self.conf_inp = InputBox(2*w/5+offset_x, 2*h/10+2*offset_x+y, w/6-offset_x, y, text='0.2')
         self.conf_lbl = Label(2*w/5+offset_x, 2*h/10+offset_y+y, text='Box Confidence:')
+        self.conf_hint_tk = Toolkit(screen, self.conf_lbl.x+self.conf_lbl.get_width()+10, 2*h/10+offset_y+y, text="Sets minimum confidence threshold for box detections. Higher value leads to fewer but more accurate boxes. Lower value capture more objects, including less accurate ones.")
         #### ---- tracking parameters
         self.track_param_title_lbl = Label(offset_x, 4*h/10+y, text="Tracking Parameteres")
         self.track_high_thresh_inp = InputBox(offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.5')
         self.track_high_thresh_lbl = Label(offset_x, 4*h/10+offset_y+y, text='Track High Threshold:')
+        self.track_high_thresh_hint_tk = Toolkit(screen, self.track_high_thresh_lbl.x+self.track_high_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold for the first association during tracking used. Affects how confidently a detection is matched to an existing track.")
         self.track_low_thresh_inp = InputBox(w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.1')
         self.track_low_thresh_lbl = Label(w/5+offset_x, 4*h/10+offset_y+y, text='Track Low Threshold:')
+        self.track_low_thresh_hint_tk = Toolkit(screen, self.track_low_thresh_lbl.x+self.track_low_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold for the second association during tracking. Used when the first association fails, with more lenient criteria.")
         self.track_new_thresh_inp = InputBox(2*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.5')
         self.track_new_thresh_lbl = Label(2*w/5+offset_x, 4*h/10+offset_y+y, text='New Track Threshold:')
+        self.track_new_thresh_hint_tk = Toolkit(screen, self.track_new_thresh_lbl.x+self.track_new_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold to initialize a new track if the detection does not match any existing tracks. Controls when a new object is considered to appear.")
         self.track_buffer_inp = InputBox(3*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='300')
         self.track_buffer_lbl = Label(3*w/5+offset_x, 4*h/10+offset_y+y, text='Track Buffer Size:')
+        self.track_buffer_hint_tk = Toolkit(screen, self.track_buffer_lbl.x+self.track_buffer_lbl.get_width()+10, 4*h/10+offset_y+y, text="Buffer used to indicate the number of frames lost tracks should be kept alive before getting removed. Higher value means more tolerance for occlusion.")
         self.track_match_thresh_inp = InputBox(4*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.8')
         self.track_match_thresh_lbl = Label(4*w/5+offset_x, 4*h/10+offset_y+y, text='Matching Threshold:')
+        self.track_match_thresh_hint_tk = Toolkit(screen, self.track_match_thresh_lbl.x+self.track_match_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold for matching tracks. Higher values makes the matching more lenient.")
         #### ---- monkey names
         self.monkeys_name_title_lbl = Label(offset_x, 6*h/10+y, text="Monkey's Names")
         self.monkey_name_lbl = Label(offset_x, 6*h/10+offset_y+y, text="Monkey Name:")
@@ -117,9 +125,27 @@ class App:
         self.confirm_btn = Button("Confirm", w/12-offset_x, y, (w-w/12-2*offset_x, h-y-offset_y), func=self.__confirm)
         self.finish_btn = Button("Terminate", w/12-offset_x, y, (offset_x, h-y-offset_y), func=self.__finish)
 
+        self.back_to_menu_btn = Button("Back", w//10, y, (w//20, h-h//10), func=self.__back)
+
         self.__init()
 
     def __init(self):
+        ## reset all checkboxes
+        for var in list(filter(lambda x: x.endswith('_ckb'), vars(self).keys())):
+            getattr(self, var).reset()
+
+        ## reset all labels
+        for var in list(filter(lambda x: x.endswith('_lbl'), vars(self).keys())):
+            getattr(self, var).reset()         
+        
+        ## reset all radio buttons
+        for var in list(filter(lambda x: x.endswith('_rb'), vars(self).keys())):
+            getattr(self, var).reset()
+        
+        ## reset all dropdowns and lists
+        for var in list(filter(lambda x: x.endswith('_lst'), vars(self).keys())):
+            getattr(self, var).reset()
+
         self.cuda = torch.cuda.is_available()
         if self.cuda:
             self.prediction_device_lbl.text = "CUDA is available. Prediction will be done on GPU."
@@ -166,7 +192,6 @@ class App:
         self.waiting_process()
         self.wait = False
         self.convert = False
-  
 
     def __prompt_file(self, mode="file", filetype=("all files", "*.*")):
         """Create a Tk file dialog and cleanup when finished"""
@@ -184,6 +209,14 @@ class App:
         
         return file_name
     
+    def __back(self):
+        print("------back---------")
+        self.back_to_menu_btn.clickable = False
+        self.__quit()
+        self.__init()
+        self.step = 0
+        self.back_to_menu_btn.clickable = True
+
     def __browse_output(self):
         try:
             self.output_dir = self.__prompt_file(mode='folder')
@@ -246,7 +279,7 @@ class App:
             yaml.dump(params, f, sort_keys=False)
         ## --------------------------------------
 
-        self.monkey_list_lst.update_options(['No Lable']+self.monkey_list)
+        self.monkey_list_lst.update_options(['No Label']+self.monkey_list)
         self.tracked_videos = []
         self.frame_grid = []
         self.cover_grid = []
@@ -294,7 +327,7 @@ class App:
                     if self.mapping_ids[i][id]!=0:
                         cropped_box = frame[int(rect[1]-rect[3]/2):int(rect[1]+rect[3]/2),int(rect[0]-rect[2]/2):int(rect[0]+rect[2]/2)]
                         cropped_box = cv2.cvtColor(cropped_box, cv2.COLOR_RGB2BGR)
-                        cv2.imwrite(os.path.join(self.output_dir, self.monkey_list_lst.options[self.mapping_ids[i][id]],datetime.now().strftime("%Y%m%d%H%M%S")+'.png'), cropped_box)
+                        cv2.imwrite(os.path.join(self.output_dir, self.monkey_list_lst.options[self.mapping_ids[i][id]],str(frame_info[-1])+'_'+os.path.basename(self.input_video[i]).split('.')[0]+'.png'), cropped_box)
 
             self.frame_grid = []
             self.cover_grid = []
@@ -372,6 +405,15 @@ class App:
                     #### ------------
                     self.process_btn.draw(screen)
 
+                    self.browse_video_hint_tk.draw()
+                    self.iou_hint_tk.draw()
+                    self.conf_hint_tk.draw()
+                    self.track_high_thresh_hint_tk.draw()
+                    self.track_low_thresh_hint_tk.draw()
+                    self.track_new_thresh_hint_tk.draw()
+                    self.track_buffer_hint_tk.draw()
+                    self.track_match_thresh_hint_tk.draw()
+
                 elif self.step == 1:   # process page
                     if self.done:
                         font = pygame.font.Font(None, 108)
@@ -379,6 +421,7 @@ class App:
                         r = text.get_rect()
                         screen.blit(text, ((self.w-r.width)//2, (self.h-r.height)//2-50))
                                 
+                        self.back_to_menu_btn.draw(screen)
                     else:
                         self.confirm_btn.clickable = np.array([self.tracked_videos[i].qsize()>0 for i in range(len(self.tracked_videos))]).all()
                             
