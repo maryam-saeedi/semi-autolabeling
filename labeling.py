@@ -1,4 +1,4 @@
-def track(video_name, weight_name, conf_thresh, iou_thresh, mapping, output_stream, running):
+def track(video_name, interval, weight_name, conf_thresh, iou_thresh, mapping, output_stream, running, video_length):
     from collections import defaultdict
 
     model = YOLO(weight_name)
@@ -7,6 +7,7 @@ def track(video_name, weight_name, conf_thresh, iou_thresh, mapping, output_stre
     # Store the track history
     track_history = defaultdict(lambda: [])
 
+    video_length.value = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cnt = -1
     while cap.isOpened() and running.value:
         success, frame = cap.read()
@@ -58,7 +59,7 @@ def track(video_name, weight_name, conf_thresh, iou_thresh, mapping, output_stre
                 if id not in mapping:
                     mapping[id] = 0
 
-        if cnt%100==0:
+        if cnt%interval==0:
             output_stream.put((cv2.cvtColor(frame,cv2.COLOR_BGR2RGB), boxes, track_ids, cnt))
 
     output_stream.put(None)
@@ -82,7 +83,7 @@ class App:
         self.browse_video_btn = Button("Browse Video Folder", w/3-2*(offset_x), y, (2*offset_x, offset_y+y), func=self.__browse_videos)
         self.browse_video_hint_tk = Toolkit(screen, 2*offset_x+w/3-2*(offset_x)+10, offset_y+y, text="Select a folder containing synchronized videos of a recording session.")
         self.video_file_lbl = Label(2*offset_x, offset_y+2*y, w=w/3-2*offset_x)
-        self.video_files_count_lbl = Label(2*offset_x+w/3-2*(offset_x), offset_y+y, w=w/3-2*offset_x)
+        self.video_files_count_lbl = Label(2*offset_x, 2*offset_y+2*y, w=w/3-2*offset_x)
         self.browse_output_btn = Button("Browse Output Folder", w/3-2*(offset_x), y, (w-w/3, offset_y+y), func=self.__browse_output)
         self.output_dir_lbl = Label(w-w/3, offset_y+2*y, w=w/3-2*offset_x)
         #### ---- box parameteres
@@ -92,26 +93,29 @@ class App:
         self.iou_inp = InputBox(w/5+offset_x, 2*h/10+2*offset_y+y, w/6-offset_x, y, text='0.75')
         self.iou_lbl = Label(w/5+offset_x, 2*h/10+offset_y+y, text='IoU Threshold:')
         self.iou_hint_tk = Toolkit(screen, self.iou_lbl.x+self.iou_lbl.get_width()+10, 2*h/10+offset_y+y, text="Threshold used during NMS to decide whether to keep overlapping boxes. Higher value retains more overlapping boxes (useful when objects are close together). Lower value removes overlapping boxes to avoid duplicate detections.")
-        self.conf_inp = InputBox(2*w/5+offset_x, 2*h/10+2*offset_x+y, w/6-offset_x, y, text='0.2')
+        self.conf_inp = InputBox(2*w/5+offset_x, 2*h/10+2*offset_y+y, w/6-offset_x, y, text='0.2')
         self.conf_lbl = Label(2*w/5+offset_x, 2*h/10+offset_y+y, text='Box Confidence:')
         self.conf_hint_tk = Toolkit(screen, self.conf_lbl.x+self.conf_lbl.get_width()+10, 2*h/10+offset_y+y, text="Sets minimum confidence threshold for box detections. Higher value leads to fewer but more accurate boxes. Lower value capture more objects, including less accurate ones.")
         #### ---- tracking parameters
         self.track_param_title_lbl = Label(offset_x, 4*h/10+y, text="Tracking Parameteres")
-        self.track_high_thresh_inp = InputBox(offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.5')
+        self.track_high_thresh_inp = InputBox(offset_x, 4*h/10+2*offset_y+y,  w/7-offset_x, y, text='0.5')
         self.track_high_thresh_lbl = Label(offset_x, 4*h/10+offset_y+y, text='Track High Threshold:')
         self.track_high_thresh_hint_tk = Toolkit(screen, self.track_high_thresh_lbl.x+self.track_high_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold for the first association during tracking used. Affects how confidently a detection is matched to an existing track.")
-        self.track_low_thresh_inp = InputBox(w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.1')
-        self.track_low_thresh_lbl = Label(w/5+offset_x, 4*h/10+offset_y+y, text='Track Low Threshold:')
+        self.track_low_thresh_inp = InputBox(w/6+offset_x, 4*h/10+2*offset_y+y,  w/7-offset_x, y, text='0.1')
+        self.track_low_thresh_lbl = Label(w/6+offset_x, 4*h/10+offset_y+y, text='Track Low Threshold:')
         self.track_low_thresh_hint_tk = Toolkit(screen, self.track_low_thresh_lbl.x+self.track_low_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold for the second association during tracking. Used when the first association fails, with more lenient criteria.")
-        self.track_new_thresh_inp = InputBox(2*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.5')
-        self.track_new_thresh_lbl = Label(2*w/5+offset_x, 4*h/10+offset_y+y, text='New Track Threshold:')
+        self.track_new_thresh_inp = InputBox(2*w/6+offset_x, 4*h/10+2*offset_y+y,  w/7-offset_x, y, text='0.5')
+        self.track_new_thresh_lbl = Label(2*w/6+offset_x, 4*h/10+offset_y+y, text='New Track Threshold:')
         self.track_new_thresh_hint_tk = Toolkit(screen, self.track_new_thresh_lbl.x+self.track_new_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold to initialize a new track if the detection does not match any existing tracks. Controls when a new object is considered to appear.")
-        self.track_buffer_inp = InputBox(3*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='300')
-        self.track_buffer_lbl = Label(3*w/5+offset_x, 4*h/10+offset_y+y, text='Track Buffer Size:')
+        self.track_buffer_inp = InputBox(3*w/6+offset_x, 4*h/10+2*offset_y+y,  w/7-offset_x, y, text='300')
+        self.track_buffer_lbl = Label(3*w/6+offset_x, 4*h/10+offset_y+y, text='Track Buffer Size:')
         self.track_buffer_hint_tk = Toolkit(screen, self.track_buffer_lbl.x+self.track_buffer_lbl.get_width()+10, 4*h/10+offset_y+y, text="Buffer used to indicate the number of frames lost tracks should be kept alive before getting removed. Higher value means more tolerance for occlusion.")
-        self.track_match_thresh_inp = InputBox(4*w/5+offset_x, 4*h/10+2*offset_y+y,  w/6-offset_x, y, text='0.8')
-        self.track_match_thresh_lbl = Label(4*w/5+offset_x, 4*h/10+offset_y+y, text='Matching Threshold:')
+        self.track_match_thresh_inp = InputBox(4*w/6+offset_x, 4*h/10+2*offset_y+y,  w/7-offset_x, y, text='0.8')
+        self.track_match_thresh_lbl = Label(4*w/6+offset_x, 4*h/10+offset_y+y, text='Matching Threshold:')
         self.track_match_thresh_hint_tk = Toolkit(screen, self.track_match_thresh_lbl.x+self.track_match_thresh_lbl.get_width()+10, 4*h/10+offset_y+y, text="Threshold for matching tracks. Higher values makes the matching more lenient.")
+        ###
+        self.frame_interval_inp = InputBox(5*w/6+offset_x, 4*h/10+2*offset_y+y, w/7-offset_x, y, text='100')
+        self.frame_interval_lbl = Label(5*w/6+offset_x, 4*h/10+offset_y+y, text='Interval:')
         #### ---- monkey names
         self.monkeys_name_title_lbl = Label(offset_x, 6*h/10+y, text="Monkey's Names")
         self.monkey_name_lbl = Label(offset_x, 6*h/10+offset_y+y, text="Monkey Name:")
@@ -122,6 +126,7 @@ class App:
         self.process_btn = Button("Process", w/6-offset_x, y, (w-w/6-2*offset_x, h-y-offset_y), clickable=False, func=self.__wait_for_process, process=self.__process)
 
         self.monkey_list_lst = DropDown(offset_x, offset_y, w/6-offset_x, y, options=["No Label"], enable=False, scrollable=True, height=8*h/10, func=self.__select_monkey)
+        self.progress_info_lbl = Label(0, .05*h/2, w = w, pos='center')
         self.confirm_btn = Button("Confirm", w/12-offset_x, y, (w-w/12-2*offset_x, h-y-offset_y), func=self.__confirm)
         self.finish_btn = Button("Terminate", w/12-offset_x, y, (offset_x, h-y-offset_y), func=self.__finish)
 
@@ -287,14 +292,16 @@ class App:
         self.mapping_ids = [dict()]*len(self.input_video)
         self.tracking_running = Value('b', True)
         self.tracking_on_video_process = []
+        self.whole_video_length = Value('i', 0)
         for i,video in enumerate(self.input_video):
             self.tracked_videos.append(Queue())
-            self.tracking_on_video_process.append(threading.Thread(target = track, args=(video, self.box_weight, float(self.conf_inp.text), float(self.iou_inp.text), self.mapping_ids[i], self.tracked_videos[-1], self.tracking_running)))
+            self.tracking_on_video_process.append(threading.Thread(target = track, args=(video, int(self.frame_interval_inp.text), self.box_weight, float(self.conf_inp.text), float(self.iou_inp.text), self.mapping_ids[i], self.tracked_videos[-1], self.tracking_running, self.whole_video_length)))
             self.tracking_on_video_process[-1].start()
         for i in range(len(self.tracked_videos)):
-                frame_info = self.tracked_videos[i].get()
-                self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}, func=self.__click_on_monkey_box, area_num=i))
-                self.frame_grid.append(frame_info)
+            frame_info = self.tracked_videos[i].get()
+            self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}, func=self.__click_on_monkey_box, area_num=i))
+            self.frame_grid.append(frame_info)
+            self.progress_info_lbl.text = f"Tracking frame {frame_info[-1]+1} / {self.whole_video_length.value}."
 
         # os.makedirs(os.path.join(self.output_dir,'dataset'),exist_ok=True)
         self.output_dir = os.path.join(self.output_dir,'dataset_'+datetime.now().strftime("%Y%m%d%H%M%S"))
@@ -338,6 +345,7 @@ class App:
                     break
                 self.cover_grid.append(ClickableArea(0,0,frame_info[0].shape[1],frame_info[0].shape[0],frame_info[1],{key: self.monkey_list_lst.options[value] for key, value in self.mapping_ids[i].items()}, frame_info[2], {key: self.color_coded[value] for key, value in self.mapping_ids[i].items()}, func=self.__click_on_monkey_box, area_num=i))
                 self.frame_grid.append(frame_info)
+                self.progress_info_lbl.text = f"Tracking frame {frame_info[-1]+1} / {self.whole_video_length.value}."
 
     def __finish(self):
         self.__quit()
@@ -367,7 +375,7 @@ class App:
                     self.prediction_device_lbl.draw(screen)
                     self.process_btn.clickable = len(self.input_video)>0 and (self.box_weight is not None) and self.output_dir!='' and len(self.monkey_list)>0 \
                         and self.track_high_thresh_inp.text!='' and self.track_low_thresh_inp.text!='' and self.track_buffer_inp.text!='' and self.track_match_thresh_inp.text!='' and self.track_new_thresh_inp.text!='' \
-                        and self.iou_inp.text!='' and self.conf_inp.text!=''
+                        and self.frame_interval_inp.text!='' and self.iou_inp.text!='' and self.conf_inp.text!=''
                     self.browse_video_btn.draw(screen)
                     self.video_file_lbl.draw(screen)
                     self.video_files_count_lbl.draw(screen)
@@ -394,6 +402,9 @@ class App:
                     self.track_buffer_inp.draw(screen, self.events)
                     self.track_match_thresh_lbl.draw(screen)
                     self.track_match_thresh_inp.draw(screen, self.events)
+                    ###
+                    self.frame_interval_inp.draw(screen, self.events)
+                    self.frame_interval_lbl.draw(screen)
                     #### ---- monkey names
                     self.monkey_name_lbl.draw(screen)
                     self.monkey_name_inp.draw(screen, self.events)
@@ -425,6 +436,7 @@ class App:
                     else:
                         self.confirm_btn.clickable = np.array([self.tracked_videos[i].qsize()>0 for i in range(len(self.tracked_videos))]).all()
                             
+                        self.progress_info_lbl.draw(screen)
                         self.monkey_list_lst.update(self.events)
                         self.monkey_list_lst.draw(screen)
                         self.confirm_btn.draw(screen)
